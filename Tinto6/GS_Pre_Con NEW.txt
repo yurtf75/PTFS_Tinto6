@@ -1,0 +1,37 @@
+int nth, istart, iend, tid, jj;
+#pragma omp parallel private(nth, istart, iend, tid, jj)
+{
+    nth = omp_get_num_threads();
+    tid = omp_get_thread_num();
+
+    istart = (xSize - 2) * tid / nth + 1;
+    iend = (xSize - 2) * (tid + 1) / nth;
+
+    // Forward substitution
+    for (int j = 1; j < ySize - 1 + nth - 1; ++j)
+    {
+        jj = j - tid;
+        if (jj >= 1 && jj < ySize - 1)
+        {
+            for (int i = istart; i <= iend; ++i)
+            {
+                (*x)(jj, i) = w_c * ((*rhs)(jj, i) + (w_y * (*x)(jj - 1, i) + w_x * (*x)(jj, i - 1)));
+            }
+        }
+        #pragma omp barrier
+    }
+
+    // Backward substitution
+    for (int j = ySize - 2 + nth - 1; j > 0; --j)
+    {
+        jj = j - tid;
+        if (jj >= 1 && jj < ySize - 1)
+        {
+            for (int i = iend; i >= istart; --i)
+            {
+                (*x)(jj, i) = (*x)(jj, i) + w_c * (w_y * (*x)(jj + 1, i) + w_x * (*x)(jj, i + 1));
+            }
+        }
+        #pragma omp barrier
+    }
+}
